@@ -14,7 +14,11 @@ public class Error {
     public static final Exception FileNotExistsException = new RuntimeException("File does not exists!");
     public static final Exception FileCannotRWException = new RuntimeException("File cannot read or write!");
 
-    // dm
+    // dm: data manager 中的 Exception —— 错误日志、内存过小、数据过大、数据库繁忙
+    public static final Exception BadLogFileException = new RuntimeException("Bad log file!");
+    public static final Exception MemTooSmallException = new RuntimeException("Memory too small!");
+    public static final Exception DataTooLargeException = new RuntimeException("Data too large!");
+    public static final Exception DatabaseBusyException = new RuntimeException("Database is busy!");
 
     // tm:Transaction Manager 中的错误
     public static final Exception BadXIDFileException = new RuntimeException("Bad XID file!");
