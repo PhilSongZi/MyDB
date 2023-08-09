@@ -20,10 +20,13 @@ public class Error {
     public static final Exception DataTooLargeException = new RuntimeException("Data too large!");
     public static final Exception DatabaseBusyException = new RuntimeException("Database is busy!");
 
-    // tm:Transaction Manager 中的错误
+    // tm:Transaction Manager 中的异常——XID文件问题。
     public static final Exception BadXIDFileException = new RuntimeException("Bad XID file!");
 
-    // vm
+    // vm: Version Manager 中异常类型——死锁、并发更新、空条目
+    public static final Exception DeadlockException = new RuntimeException("Deadlock!");
+    public static final Exception ConcurrentUpdateException = new RuntimeException("Concurrent update issue!");
+    public static final Exception NullEntryException = new RuntimeException("Null entry!");
 
     // tbm
 
