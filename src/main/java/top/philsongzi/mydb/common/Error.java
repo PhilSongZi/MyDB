@@ -28,11 +28,21 @@ public class Error {
     public static final Exception ConcurrentUpdateException = new RuntimeException("Concurrent update issue!");
     public static final Exception NullEntryException = new RuntimeException("Null entry!");
 
-    // tbm
+    // tbm 的异常：非法字段名、字段不存在、字段未索引、逻辑不合法操作、值不合法、重复表、表未找到
+    public static final Exception InvalidFieldException = new RuntimeException("Invalid field type!");
+    public static final Exception FieldNotFoundException = new RuntimeException("Field not found!");
+    public static final Exception FieldNotIndexedException = new RuntimeException("Field not indexed!");
+    public static final Exception InvalidLogOpException = new RuntimeException("Invalid logic operation!");
+    public static final Exception InvalidValuesException = new RuntimeException("Invalid values!");
+    public static final Exception DuplicatedTableException = new RuntimeException("Duplicated table!");
+    public static final Exception TableNotFoundException = new RuntimeException("Table not found!");
 
-    // parser
+    // parser 的异常：非法命令、表不含索引
+    public static final Exception InvalidCommandException = new RuntimeException("Invalid command!");
+    public static final Exception TableNoIndexException = new RuntimeException("Table has no index!");
 
     // transport
+    public static final Exception InvalidPkgDataException = new RuntimeException("Invalid package data!");
 
     // server
 
