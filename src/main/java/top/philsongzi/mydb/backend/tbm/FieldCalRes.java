@@ -4,5 +4,8 @@ package top.philsongzi.mydb.backend.tbm;
  * @author 小子松
  * @since 2023/8/15
  */
-public class FieldCallRes {
+public class FieldCalRes {
+
+    public long left;
+    public long right;
 }

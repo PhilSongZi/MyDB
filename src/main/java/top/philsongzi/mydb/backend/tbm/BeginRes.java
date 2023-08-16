@@ -5,4 +5,7 @@ package top.philsongzi.mydb.backend.tbm;
  * @since 2023/8/15
  */
 public class BeginRes {
+
+    public long xid;
+    public byte[] result;
 }
