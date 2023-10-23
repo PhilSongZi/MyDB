@@ -40,7 +40,7 @@ public interface TransactionManager {
 
     // 创建一个TM实例——单例模式，通过create()或open()方法创建
     // 1.create()：创建一个新的XID文件
-    public static TransactionManagerImpl create(String path) {
+    static TransactionManagerImpl create(String path) {
         // 路径+文件名后缀
         File file = new File(path + TransactionManagerImpl.XID_SUFFIX);
         try {
@@ -79,7 +79,7 @@ public interface TransactionManager {
     }
 
     // 2.open()：打开一个已有的XID文件
-    public static TransactionManagerImpl open(String path) {
+    static TransactionManagerImpl open(String path) {
         File file = new File(path + TransactionManagerImpl.XID_SUFFIX);
         // 照旧是文件存在与否与可读可写的判断
         if (!file.exists()) {

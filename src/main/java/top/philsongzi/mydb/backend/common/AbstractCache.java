@@ -15,7 +15,7 @@ import top.philsongzi.mydb.common.Error;
  */
 public abstract class AbstractCache<T> {
 
-    // 引用计数嘛，除了普通的缓存功能，还需要另外维护一个计数。
+    // 引用计数，除了普通的缓存功能，还需要另外维护一个计数。
     // 除此以外，为了应对多线程场景，还需要记录哪些资源正在从数据源获取中（从数据源获取资源是一个相对费时的操作）。
     // 因此，有下面三个 HashMap。
     private HashMap<Long, T> cache;                     // 实际缓存的数据

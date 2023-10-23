@@ -1,6 +1,8 @@
 package top.philsongzi.mydb.backend.common;
 
 /**
+ * 模拟缓存对象
+ *
  * @author 小子松
  * @since 2023/8/4
  */

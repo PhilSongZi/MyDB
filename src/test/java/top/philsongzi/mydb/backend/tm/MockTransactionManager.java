@@ -1,6 +1,8 @@
 package top.philsongzi.mydb.backend.tm;
 
 /**
+ * TM 模拟对象
+ *
  * @author 小子松
  * @since 2023/8/3
  */

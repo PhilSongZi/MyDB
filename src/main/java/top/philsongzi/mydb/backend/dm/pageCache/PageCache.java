@@ -18,7 +18,7 @@ import java.nio.channels.FileChannel;
 public interface PageCache {
 
     // 1 << 13 = 8192 = 8KB 页面大小
-    public static final int PAGE_SIZE = 1 << 13;
+    int PAGE_SIZE = 1 << 13;  // public static final 对于接口类成员来说是多余的，因为接口类成员默认就是 public static final 的。
 
     int newPage(byte[] initData);
     Page getPage(int pageNumber) throws Exception;
@@ -56,6 +56,7 @@ public interface PageCache {
 
     static PageCacheImpl open(String path, long memory) {
         File f = new File(path+PageCacheImpl.DB_SUFFIX);
+        // Duplicated code fragment (15 lines long).
         if(!f.exists()) {
             Panic.panic(Error.FileNotExistsException);
         }
