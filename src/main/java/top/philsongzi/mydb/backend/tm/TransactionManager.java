@@ -18,29 +18,24 @@ import java.nio.channels.FileChannel;
  */
 public interface TransactionManager {
 
-    // 开启一个新事务
+    // 事务的操作方法：开始、提交、取消、查询状态
     long begin();
-
-    // 提交一个事务
     void commit(long xid);
-
-    // 取消一个事务
     void abort(long xid);
 
-    // 查询一个事务的状态
-    // 1.是否正在进行
+    // 查询一个事务的状态：进行中、提交、取消
     boolean isActive(long xid);
-    // 2.是否是已提交
     boolean isCommitted(long xid);
-    // 3.是否是已取消
     boolean isAborted(long xid);
 
     // 关闭TM
     void close();
 
     // 创建一个TM实例——单例模式，通过create()或open()方法创建
-    // 1.create()：创建一个新的XID文件
     static TransactionManagerImpl create(String path) {
+        /**
+         * 创建一个新的XID文件
+         */
         // 路径+文件名后缀
         File file = new File(path + TransactionManagerImpl.XID_SUFFIX);
         try {
@@ -56,11 +51,11 @@ public interface TransactionManager {
             Panic.panic(Error.FileCannotRWException);
         }
 
-        FileChannel fc = null;
+        FileChannel fileChannel = null;
         RandomAccessFile raf = null;
         try {
             raf = new RandomAccessFile(file, "rw");
-            fc = raf.getChannel();
+            fileChannel = raf.getChannel();
         } catch (FileNotFoundException e) {
             Panic.panic(e);
         }
@@ -69,17 +64,19 @@ public interface TransactionManager {
         ByteBuffer buf = ByteBuffer.wrap(new byte[TransactionManagerImpl.LEN_XID_HEADER_LENGTH]);
         try {
             // 从零开始XID文件时需要先写入一个空的XID文件头，即设置xidCounter为0，否则后续校验时不合法
-            fc.position(0);
-            fc.write(buf);
+            fileChannel.position(0);
+            fileChannel.write(buf);
         } catch (IOException e) {
             Panic.panic(e);
         }
 
-        return new TransactionManagerImpl(raf, fc);
+        return new TransactionManagerImpl(raf, fileChannel);
     }
 
-    // 2.open()：打开一个已有的XID文件
     static TransactionManagerImpl open(String path) {
+        /**
+         * 打开一个已存在的XID文件
+         */
         File file = new File(path + TransactionManagerImpl.XID_SUFFIX);
         // 照旧是文件存在与否与可读可写的判断
         if (!file.exists()) {
@@ -89,15 +86,15 @@ public interface TransactionManager {
             Panic.panic(Error.FileCannotRWException);
         }
 
-        FileChannel fc = null;
+        FileChannel channel = null;
         RandomAccessFile raf = null;
         try {
             raf = new RandomAccessFile(file, "rw");
-            fc = raf.getChannel();
+            channel = raf.getChannel();
         } catch (FileNotFoundException e) {
             Panic.panic(e);
         }
 
-        return new TransactionManagerImpl(raf, fc);
+        return new TransactionManagerImpl(raf, channel);
     }
 }

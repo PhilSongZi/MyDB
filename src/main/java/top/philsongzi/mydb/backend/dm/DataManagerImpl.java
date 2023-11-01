@@ -140,7 +140,7 @@ public class DataManagerImpl extends AbstractCache<DataItem> implements DataMana
 
     // 在创建文件时初始化PageOne
     void initPageOne() {
-        int pgno = pc.newPage(PageOne.InitRaw());  // 创建新页 PageOne 中的 newPage 方法调用
+        int pgno = pc.newPage(PageOne.initRaw());  // 创建新页 PageOne 中的 newPage 方法调用
         assert pgno == 1;
         try {
             pageOne = pc.getPage(pgno);

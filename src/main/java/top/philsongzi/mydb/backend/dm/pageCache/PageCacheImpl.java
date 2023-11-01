@@ -104,8 +104,13 @@ public class PageCacheImpl extends AbstractCache<Page> implements PageCache{
         flush(page);
     }
 
-    // 继承抽象缓存框架，实现 getForCache 和 releaseForCache 方法
-    // 由于数据源就是文件系统， getForCache 直接从文件中获取数据，包裹成Page即可。
+    /**
+     * 从文件系统中获取页面数据:由于数据源就是文件系统， getForCache 直接从文件中获取数据，包裹成Page即可。
+     *
+     * @param key 页面号
+     * @return 页面
+     * @throws Exception 异常
+     */
     @Override
     protected Page getForCache(long key) throws Exception {
         int pgno = (int)key;
@@ -124,7 +129,10 @@ public class PageCacheImpl extends AbstractCache<Page> implements PageCache{
         return new PageImpl(pgno, buf.array(), this);
     }
 
-    //  releaseForCache() 驱逐页面时，也只需要根据页面是否是脏页面，来决定是否需要写回文件系统
+    /**
+     * 释放页面数据：releaseForCache() 驱逐页面时，也只需要根据页面是否是脏页面，来决定是否需要写回文件系统
+     * @param page
+     */
     @Override
     protected void releaseForCache(Page page) {
         if(page.isDirty()) {

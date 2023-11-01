@@ -31,10 +31,10 @@ public class TransactionManagerImpl implements TransactionManager{
     static final int LEN_XID_HEADER_LENGTH = 8;
     // 每个事务的占用长度
     private static final int XID_FIELD_SIZE = 1;
-    // 事务的三种状态
-    private static final byte FIELD_TRAN_ACTIVE   = 0;  // 事务正在进行
-    private static final byte FIELD_TRAN_COMMITTED = 1;  // 事务已提交
-    private static final byte FIELD_TRAN_ABORTED  = 2;  // 事务已取消
+    // 事务的三种状态: 事务正在进行、事务已提交、事务已取消
+    private static final byte FIELD_TRAN_ACTIVE   = 0;
+    private static final byte FIELD_TRAN_COMMITTED = 1;
+    private static final byte FIELD_TRAN_ABORTED  = 2;
     // 超级事务，永远为 committed 状态
     public static final long SUPER_XID = 0;
     // XID 文件后缀
@@ -42,25 +42,26 @@ public class TransactionManagerImpl implements TransactionManager{
 
     // 读写方式采用NIO的FileChannel
     private RandomAccessFile file;
-    private FileChannel fc;
+    private FileChannel fileChannel;
     private long xidCounter;
     private Lock counterLock;
 
     // 构造函数
-    TransactionManagerImpl(RandomAccessFile raf, FileChannel fc) {
+    TransactionManagerImpl(RandomAccessFile raf, FileChannel fileChannel) {
         this.file = raf;
-        this.fc = fc;
+        this.fileChannel = fileChannel;
         counterLock = new ReentrantLock();
-        // 在构造函数创建了一个 TransactionManager 之后，首先要对 XID 文件进行校验，以保证这是一个合法的 XID 文件
+        // 检查 XID 文件是否合法
         checkXIDCounter();
     }
 
-    /**
-     * 检查 XID 文件是否合法
-     * 读取 XID_FILE_HEADER 中的 xidcounter，根据它计算文件的理论长度，对比实际长度
-     */
     private void checkXIDCounter() {
-        // 通过文件头的 8 字节数字反推文件的理论长度，与文件的实际长度做对比。如果不同则认为 XID 文件不合法。
+
+        /**
+         * 检查 XID 文件是否合法
+         * 读取 XID_FILE_HEADER 中的 xidcounter，根据它计算文件的理论长度，对比实际长度
+         * 通过文件头的 8 字节数字反推文件的理论长度，与文件的实际长度做对比。如果不同则认为 XID 文件不合法。
+         */
         long fileLen = 0;
         try {
             fileLen = file.length();
@@ -73,8 +74,9 @@ public class TransactionManagerImpl implements TransactionManager{
 
         ByteBuffer buf = ByteBuffer.allocate(LEN_XID_HEADER_LENGTH);
         try {
-            fc.position(0);
-            fc.read(buf);
+            // 将读取位置设为0，然后读取8个字节到buf中.
+            fileChannel.position(0);
+            fileChannel.read(buf);
         } catch (IOException e) {
             Panic.panic(e);
         }
@@ -85,27 +87,33 @@ public class TransactionManagerImpl implements TransactionManager{
         }
     }
 
-    // 根据事务 ID 计算出该事务在 XID 文件中的位置
     private long getXidPosition(long xid) {
+        /**
+         * 根据事务 ID 计算出该事务在 XID 文件中的位置
+         */
         return LEN_XID_HEADER_LENGTH + (xid - 1) * XID_FIELD_SIZE;
     }
 
-    // 更新xid事务状态，参数status 有三个值：FIELD_TRAN_ACTIVE、FIELD_TRAN_COMMITTED、FIELD_TRAN_ABORTED
     private void updateXID(long xid, byte status) {
-        long pos = getXidPosition(xid);
+        /**
+         * 更新 xid 事务状态
+         * @param xid 事务 ID
+         * @param status 事务状态：FIELD_TRAN_ACTIVE、FIELD_TRAN_COMMITTED、FIELD_TRAN_ABORTED
+         */
+        long position = getXidPosition(xid);
         ByteBuffer buf = ByteBuffer.wrap(new byte[XID_FIELD_SIZE]);
         buf.put(status);
         buf.flip();
         try {
-            fc.position(pos);
-            fc.write(buf);
+            fileChannel.position(position);
+            fileChannel.write(buf);
         } catch (IOException e) {
             Panic.panic(e);
         }
         // 强制刷入到文件中:FileChannel 的 force() 方法，强制同步缓存内容到文件中，类似于 BIO 中的 flush() 方法
         // force 方法的参数是一个布尔，表示是否同步文件的元数据（例如最后修改时间等）。这里我们不需要同步元数据，所以传入 false。
         try {
-            fc.force(false);
+            fileChannel.force(false);
         } catch (IOException e) {
             Panic.panic(e);
         }
@@ -116,15 +124,15 @@ public class TransactionManagerImpl implements TransactionManager{
         xidCounter++;
         ByteBuffer buf = ByteBuffer.wrap(Parser.long2Byte(xidCounter));
         try {
-            fc.position(0);
-            fc.write(buf);
+            fileChannel.position(0);
+            fileChannel.write(buf);
         } catch (IOException e) {
             Panic.panic(e);
         }
         // 强制刷入到文件中:FileChannel 的 force() 方法，强制同步缓存内容到文件中，类似于 BIO 中的 flush() 方法
         // force 方法的参数是一个布尔，表示是否同步文件的元数据（例如最后修改时间等）。这里我们不需要同步元数据，所以传入 false。
         try {
-            fc.force(false);
+            fileChannel.force(false);
         } catch (IOException e) {
             Panic.panic(e);
         }
@@ -159,19 +167,6 @@ public class TransactionManagerImpl implements TransactionManager{
         updateXID(xid, FIELD_TRAN_ABORTED);
     }
 
-    // 检测XID事务是否处于status状态，三种状态的判断方法都是调用此方法——抽像方法出来的一个极佳的例子
-    private boolean checkXID(long xid, byte status) {
-        long offset = getXidPosition(xid);
-        ByteBuffer buf = ByteBuffer.wrap(new byte[XID_FIELD_SIZE]);
-        try {
-            fc.position(offset);
-            fc.read(buf);
-        } catch (IOException e) {
-            Panic.panic(e);
-        }
-        return buf.array()[0] == status;
-    }
-
     // 1.是否正在进行
     @Override
     public boolean isActive(long xid) {
@@ -202,11 +197,24 @@ public class TransactionManagerImpl implements TransactionManager{
         return checkXID(xid, FIELD_TRAN_ABORTED);
     }
 
+    // 检测XID事务是否处于status状态
+    private boolean checkXID(long xid, byte status) {
+        long offset = getXidPosition(xid);
+        ByteBuffer buf = ByteBuffer.wrap(new byte[XID_FIELD_SIZE]);
+        try {
+            fileChannel.position(offset);
+            fileChannel.read(buf);
+        } catch (IOException e) {
+            Panic.panic(e);
+        }
+        return buf.array()[0] == status;
+    }
+
     // 关闭TM
     @Override
     public void close() {
         try {
-            fc.close();
+            fileChannel.close();
             file.close();
         } catch (IOException e) {
             Panic.panic(e);

@@ -22,16 +22,15 @@ public class TransactionManagerTest {
     private int transCnt = 0;  // 事务计数
     private int noWorkers = 50;  // 工作线程数
     private int noWorks = 3000;  // 每个工作线程的工作次数
-    private TransactionManager tmger;
+    private TransactionManager tranmanager;
     private Lock lock = new ReentrantLock();  // 锁，用于线程同步
     private Map<Long, Byte> transMap;  // 事务状态映射，存事务ID和状态
     private CountDownLatch cdl;  // 用于控制线程并发执行
 
     @Test
     public void testMultiThread() {
-        // 搞了个绝对路径进去。。。
-        // 因为写相对路径时报错：java.io.IOException: 系统找不到指定的路径。
-        tmger = TransactionManager.create("D:\\open_source_projects\\MyDB\\src\\test\\resources\\tmp\\tranmger_test");
+
+        tranmanager = TransactionManager.create("./tmp/tranmger_test");
         transMap = new ConcurrentHashMap<>();
         cdl = new CountDownLatch(noWorkers);
         for (int i = 0; i < noWorkers; i++) {
@@ -46,7 +45,9 @@ public class TransactionManagerTest {
         // 测试报错，看看Java assert关键字的用法
         // java.lang.AssertionError
         // at top.philsongzi.mydb.backend.tm.TransactionManagerTest.testMultiThread(TransactionManagerTest.java:45)
-        assert new File("D:\\open_source_projects\\MyDB\\src\\test\\resources\\tmp\\tranmger_test.xid").delete();
+        // 创建一个表示文件的 file 对象，调用 delete() 方法删除文件，使用断言判断删除结果。
+        // 注意：断言默认关闭！！需要在运行时加上 -ea 参数开启断言。
+        assert new File("./tmp/tranmger_test.xid").delete();
     }
 
     private void worker() {
@@ -58,7 +59,7 @@ public class TransactionManagerTest {
                 lock.lock();
                 // 如果不在事务中，则开始一个新的事务，并将事务ID和状态存入 transMap 中，增加 transCnt 的计数
                 if(inTrans == false) {
-                    long xid = tmger.begin();
+                    long xid = tranmanager.begin();
                     transMap.put(xid, (byte)0);
                     transCnt ++;
                     transXID = xid;
@@ -67,10 +68,10 @@ public class TransactionManagerTest {
                     int status = (random.nextInt(Integer.MAX_VALUE) % 2) + 1;
                     switch(status) {
                         case 1:
-                            tmger.commit(transXID);
+                            tranmanager.commit(transXID);
                             break;
                         case 2:
-                            tmger.abort(transXID);
+                            tranmanager.abort(transXID);
                             break;
                     }
                     transMap.put(transXID, (byte)status);
@@ -86,13 +87,13 @@ public class TransactionManagerTest {
                     boolean ok = false;
                     switch (status) {
                         case 0:
-                            ok = tmger.isActive(xid);
+                            ok = tranmanager.isActive(xid);
                             break;
                         case 1:
-                            ok = tmger.isCommitted(xid);
+                            ok = tranmanager.isCommitted(xid);
                             break;
                         case 2:
-                            ok = tmger.isAborted(xid);
+                            ok = tranmanager.isAborted(xid);
                             break;
                     }
                     assert ok;
