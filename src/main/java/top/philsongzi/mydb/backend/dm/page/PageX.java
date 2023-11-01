@@ -6,7 +6,7 @@ import top.philsongzi.mydb.backend.utils.Parser;
 import java.util.Arrays;
 
 /**
- * PageX管理普通页
+ * 普通页：以一个 2 字节无符号数起始，表示这一页的空闲位置的偏移。剩下的部分都是实际存储的数据。
  * 普通页结构
  * [FreeSpaceOffset] [Data]
  * FreeSpaceOffset: 2字节 空闲位置开始偏移
@@ -28,7 +28,12 @@ public class PageX {
         return raw;
     }
 
-    // 将raw插入pg中，返回插入位置
+    /**
+     * 将raw插入pg中，返回插入位置
+     * @param pg 页面
+     * @param raw 数据
+     * @return 插入位置
+     */
     public static short insert(Page pg, byte[] raw) {
         pg.setDirty(true);
         short offset = getFSO(pg.getData());
@@ -37,7 +42,11 @@ public class PageX {
         return offset;
     }
 
-    // 在写入之前获取 FSO，来确定写入的位置，并在写入之后更新 FSO
+    /**
+     * 在写入之前获取 FSO，来确定写入的位置，并在写入之后更新 FSO
+     * @param raw 数据
+     * @param ofData 数据偏移
+     */
     private static void setFSO(byte[] raw, short ofData) {
         System.arraycopy(Parser.short2Byte(ofData), 0, raw, OF_FREE, OF_DATA);
     }
@@ -56,7 +65,12 @@ public class PageX {
     }
 
     //  recoverInsert() 和 recoverUpdate() 用于在数据库崩溃后重新打开时，恢复例程直接插入数据以及修改数据使用。
-    // 将raw插入pg中的offset位置，并将pg的offset设置为较大的offset
+    /**
+     * 将raw插入pg中的offset位置，并将pg的offset设置为较大的offset
+     * @param pg 页面
+     * @param raw 数据
+     * @param offset 偏移
+     */
     public static void recoverInsert(Page pg, byte[] raw, short offset) {
         pg.setDirty(true);
         System.arraycopy(raw, 0, pg.getData(), offset, raw.length);
@@ -67,7 +81,12 @@ public class PageX {
         }
     }
 
-    // 将raw插入pg中的offset位置，不更新update
+    /**
+     * 将raw插入pg中的offset位置，不更新update
+     * @param pg 页面
+     * @param raw 数据
+     * @param offset 偏移
+     */
     public static void recoverUpdate(Page pg, byte[] raw, short offset) {
         pg.setDirty(true);
         System.arraycopy(raw, 0, pg.getData(), offset, raw.length);

@@ -12,18 +12,20 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
 /**
- *
- *
+ * 日志
  * @author 小子松
  * @since 2023/8/7
  */
 public interface Logger {
+
+    // 定义的方法：日志文件的写入、截断、读取、回溯、关闭
     void log(byte[] data);
     void truncate(long x) throws Exception;
     byte[] next();
     void rewind();
     void close();
 
+    // 单例模式创建日志文件
     static Logger create(String path) {
         File f = new File(path+LoggerImpl.LOG_SUFFIX);
         try {

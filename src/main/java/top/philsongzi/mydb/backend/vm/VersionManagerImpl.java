@@ -108,11 +108,11 @@ public class VersionManagerImpl extends AbstractCache<Entry> implements VersionM
             }
         }
         try {
-            // 可见性判断
+            // 1.可见性判断
             if(!Visibility.isVisible(tm, t, entry)) {
                 return false;
             }
-            // 锁获取
+            // 2.锁获取
             Lock l = null;
             try {
                 l = lt.add(xid, uid);
@@ -123,7 +123,7 @@ public class VersionManagerImpl extends AbstractCache<Entry> implements VersionM
                 throw t.err;
             }
             if(l != null) {
-                l.lock();
+                l.lock();  // 阻塞在这一步，等待
                 l.unlock();
             }
 
@@ -131,7 +131,7 @@ public class VersionManagerImpl extends AbstractCache<Entry> implements VersionM
                 return false;
             }
 
-            // 版本跳跃判断
+            // 3.版本跳跃判断
             if(Visibility.isVersionSkip(tm, t, entry)) {
                 t.err = Error.ConcurrentUpdateException;
                 internAbort(xid, true);

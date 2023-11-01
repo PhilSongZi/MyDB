@@ -22,7 +22,7 @@ public class Entry {
       但是在实现中，VM 并没有提供 Update 操作，对于字段的更新操作由后面的表和字段管理（TBM）实现。
       所以在 VM 的实现中，一条记录只有一个版本。
      */
-    // Entry 结构：[OF_XMIN][OF_XMAX][OF_DATA] 分别是 创建该条记录（版本）的事务编号、删除该条记录（版本）的事务编号、这条记录持有的数据
+    // Entry 结构：[OF_XMIN][OF_XMAX][OF_DATA] 分别是 创建该条记录（版本）的事务编号、删除（更新）该条记录（版本）的事务编号、这条记录持有的数据
     private static final int OF_XMIN = 0;
     private static final int OF_XMAX = OF_XMIN + 8;
     private static final int OF_DATA = OF_XMAX + 8;
@@ -45,7 +45,13 @@ public class Entry {
         return newEntry(vm, di, uid);
     }
 
-    // 根据 Entry 结构，创建 Entry 时需要调用的方法（包装 Entry ），获取记录中持有的数据时也要按照这个结构解析
+    /**
+     * Entry 结构：[XMIN][XMAX][DATA] 分别是 创建该条记录（版本）的事务编号、删除该条记录（版本）的事务编号、这条记录持有的数据
+     * 创建 Entry 时，调用本方法。
+     * @param xid
+     * @param data
+     * @return
+     */
     public static byte[] wrapEntryRaw(long xid, byte[] data) {
         byte[] xmin = Parser.long2Byte(xid);
         byte[] xmax = new byte[8];
@@ -60,7 +66,10 @@ public class Entry {
         dataItem.release();
     }
 
-    // 以拷贝的形式返回内容
+    /**
+     * 获取记录中持有的数据，按照 Entry 结构来解析。以拷贝的方式返回数据。
+     * @return
+     */
     public byte[] data() {
         dataItem.rLock();
         try {
@@ -73,6 +82,10 @@ public class Entry {
         }
     }
 
+    /**
+     * 修改 XMAX
+     * @param xid
+     */
     public void setXmax(long xid) {
         // before 和 after 是 DataItem 中定义好的数据项修改规则
         dataItem.before();

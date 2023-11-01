@@ -33,14 +33,14 @@ public interface DataItem {
     byte[] getOldRaw();
     SubArray getRaw();
 
-    public static byte[] wrapDataItemRaw(byte[] raw) {
+    static byte[] wrapDataItemRaw(byte[] raw) {
         byte[] valid = new byte[1];
         byte[] size = Parser.short2Byte((short)raw.length);
         return Bytes.concat(valid, size, raw);
     }
 
     // 从页面的 offset 处解析出 dataitem
-    public static DataItem parseDataItem(Page pg, short offset, DataManagerImpl dm) {
+    static DataItem parseDataItem(Page pg, short offset, DataManagerImpl dm) {
         byte[] raw = pg.getData();
         short size = Parser.parseShort(Arrays.copyOfRange(raw, offset+DataItemImpl.OF_SIZE, offset+DataItemImpl.OF_DATA));
         short length = (short)(size + DataItemImpl.OF_DATA);
@@ -48,7 +48,7 @@ public interface DataItem {
         return new DataItemImpl(new SubArray(raw, offset, offset+length), new byte[length], pg, uid, dm);
     }
 
-    public static void setDataItemRawInvalid(byte[] raw) {
+    static void setDataItemRawInvalid(byte[] raw) {
         raw[DataItemImpl.OF_VALID] = (byte)1;
     }
 }

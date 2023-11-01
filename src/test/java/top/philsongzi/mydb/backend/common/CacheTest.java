@@ -18,7 +18,7 @@ import java.util.concurrent.CountDownLatch;
 public class CacheTest {
 
     static Random random = new SecureRandom();
-    private CountDownLatch cdl;  // 用于控制线程同步
+    private CountDownLatch cdl;  // 用于控制线程协调与同步
     private MockCache cache;  // 模拟缓存对象
 
     @Test

@@ -8,8 +8,9 @@ import java.util.concurrent.locks.ReentrantLock;
 import top.philsongzi.mydb.common.Error;
 
 /**
- * AbstractCache 实现了一个引用计数策略的缓存
- *
+ * AbstractCache 实现了一个引用计数策略的缓存：
+ * 不采用LRU——LRU驱逐资源不可控，上层无法感知驱逐的是哪个资源。引用计数，只有在上层模块助动释放引用，缓存确保没有模块使用此资源时才驱逐。
+ * 当缓存满，引用计数无法自动释放缓存，直接报错（类似JVM）OOM。
  * @author 小子松
  * @since 2023/8/4
  */
@@ -20,7 +21,7 @@ public abstract class AbstractCache<T> {
     // 因此，有下面三个 HashMap。
     private HashMap<Long, T> cache;                     // 实际缓存的数据
     private HashMap<Long, Integer> references;          // 元素的引用个数
-    private HashMap<Long, Boolean> getting;             // 正在获取某资源的线程
+    private HashMap<Long, Boolean> getting;             // 正在被获取的资源
 
     private int maxResource;                            // 缓存的最大缓存资源数
     private int count = 0;                              // 缓存中元素的个数
@@ -35,7 +36,13 @@ public abstract class AbstractCache<T> {
         lock = new ReentrantLock();
     }
 
-    // get 方法 获取资源
+
+    /**
+     * get 方法 获取资源
+     * @param key
+     * @return
+     * @throws Exception
+     */
     protected T get(long key) throws Exception {
         // 1.在通过 get() 方法获取资源时，首先进入一个死循环，来无限尝试从缓存里获取。
         while(true) {

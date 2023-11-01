@@ -15,11 +15,18 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
+ * 日志文件的实现：[XChecksum][Log1][Log2][Log3]...[LogN][BadTail]。
+ * XChecksum: 日志文件的校验和；
+ * Log: 日志；
+ * BadTail: 日志文件的尾部，可能是不完整的日志，需要移除（不一定存在）。
+ * 单条日志的内容：[Size][Checksum][Data]
+ * 其中，Size 是一个四字节整数，标识了 Data 段的字节数。Checksum 则是该条日志的校验和。
  * @author 小子松
  * @since 2023/8/7
  */
 public class LoggerImpl implements Logger {
 
+    // 种子
     private static final int SEED = 13331;
 
     private static final int OF_SIZE = 0;
@@ -49,6 +56,9 @@ public class LoggerImpl implements Logger {
         lock = new ReentrantLock();
     }
 
+    /**
+     * 初始化日志文件
+     */
     void init() {
         long size = 0;
         try {
@@ -74,7 +84,9 @@ public class LoggerImpl implements Logger {
         checkAndRemoveTail();
     }
 
-    // 检查并移除bad tail
+    /**
+     * 检查并移除bad tail，由于 BadTail 该条日志尚未写入完成，文件的校验和也就不会包含该日志的校验和，去掉 BadTail 即可保证日志文件的一致性。
+     */
     private void checkAndRemoveTail() {
         rewind();
 
@@ -89,6 +101,7 @@ public class LoggerImpl implements Logger {
         }
 
         try {
+            // 截断日志文件到最后一个完整的日志
             truncate(position);
         } catch (Exception e) {
             Panic.panic(e);
@@ -101,7 +114,12 @@ public class LoggerImpl implements Logger {
         rewind();
     }
 
-    // 单条日志的校验和（checkSum）计算：通过一个指定的种子实现
+    /**
+     * 单条日志的校验和（checkSum）计算：通过一个指定的种子实现
+     * @param xCheck 校验和
+     * @param log 日志
+     * @return 校验和
+     */
     private int calChecksum(int xCheck, byte[] log) {
         for (byte b : log) {
             xCheck = xCheck * SEED + b;
@@ -109,12 +127,16 @@ public class LoggerImpl implements Logger {
         return xCheck;
     }
 
+    /**
+     * 写入日志文件：包裹成日志格式，添加日志的大小和校验和
+     */
     @Override
     public void log(byte[] data) {
         byte[] log = wrapLog(data);
         ByteBuffer buf = ByteBuffer.wrap(log);
         lock.lock();
         try {
+            // 定位到日志文件的末尾、追加日志
             fc.position(fc.size());
             fc.write(buf);
         } catch(IOException e) {
@@ -122,9 +144,14 @@ public class LoggerImpl implements Logger {
         } finally {
             lock.unlock();
         }
+        // 更新日志文件的校验和
         updateXChecksum(log);
     }
 
+    /**
+     * 更新日志文件的校验和
+     * @param log 日志
+     */
     private void updateXChecksum(byte[] log) {
         this.xChecksum = calChecksum(this.xChecksum, log);
         try {
@@ -136,12 +163,22 @@ public class LoggerImpl implements Logger {
         }
     }
 
+    /**
+     * 包装日志：添加日志的大小和校验和
+     * @param data 日志
+     * @return 包装后的日志
+     */
     private byte[] wrapLog(byte[] data) {
         byte[] checksum = Parser.int2Byte(calChecksum(0, data));
         byte[] size = Parser.int2Byte(data.length);
         return Bytes.concat(size, checksum, data);
     }
 
+    /**
+     * 截断日志文件，主要用来去除 bad tail
+     * @param x 截断的位置
+     * @throws Exception 异常
+     */
     @Override
     public void truncate(long x) throws Exception {
         lock.lock();
@@ -152,10 +189,16 @@ public class LoggerImpl implements Logger {
         }
     }
 
+    /**
+     * next() 方法的内部实现
+     * @return 日志
+     */
     private byte[] internNext() {
         if(position + OF_DATA >= fileSize) {
             return null;
         }
+
+        // 读取日志的大小
         ByteBuffer tmp = ByteBuffer.allocate(4);
         try {
             fc.position(position);
@@ -168,6 +211,7 @@ public class LoggerImpl implements Logger {
             return null;
         }
 
+         // 读取 checkSum 和 data
         ByteBuffer buf = ByteBuffer.allocate(OF_DATA + size);
         try {
             fc.position(position);
@@ -176,6 +220,7 @@ public class LoggerImpl implements Logger {
             Panic.panic(e);
         }
 
+        // 校验 checkSum
         byte[] log = buf.array();
         int checkSum1 = calChecksum(0, Arrays.copyOfRange(log, OF_DATA, log.length));
         int checkSum2 = Parser.parseInt(Arrays.copyOfRange(log, OF_CHECKSUM, OF_DATA));
@@ -186,6 +231,10 @@ public class LoggerImpl implements Logger {
         return log;
     }
 
+    /**
+     * 读取日志文件中的下一条日志：迭代器模式，使用 next() 读取，内部实现依靠 internNext() 方法
+     * @return 日志
+     */
     @Override
     public byte[] next() {
         lock.lock();
@@ -198,6 +247,9 @@ public class LoggerImpl implements Logger {
         }
     }
 
+    /**
+     * 回溯到日志文件的开头
+     */
     @Override
     public void rewind() {
         position = 4;

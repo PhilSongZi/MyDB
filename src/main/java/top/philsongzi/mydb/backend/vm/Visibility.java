@@ -10,7 +10,13 @@ import top.philsongzi.mydb.backend.tm.TransactionManager;
  */
 public class Visibility {
 
-    // 取出要修改的数据X的最新提交版本，检查该最新版本的创建者是否对当前事务可见
+    /**
+     * 取出要修改的数据X的最新提交版本，检查该最新版本的创建者是否对当前事务可见
+     * @param tm 事务管理器对象
+     * @param t 当前事务
+     * @param e 要判断的记录
+     * @return 是否可见
+     */
     public static boolean isVersionSkip(TransactionManager tm, Transaction t, Entry e) {
         long xmax = e.getXmax();
         if(t.level == 0) {
@@ -20,6 +26,13 @@ public class Visibility {
         }
     }
 
+    /**
+     * 判断某个记录对事务 t 是否可见
+     * @param tm 事务管理器对象
+     * @param t 当前事务
+     * @param e 要判断的记录
+     * @return 是否可见
+     */
     public static boolean isVisible(TransactionManager tm, Transaction t, Entry e) {
         if(t.level == 0) {
             return readCommitted(tm, t, e);
@@ -28,7 +41,13 @@ public class Visibility {
         }
     }
 
-    // 读提交隔离级别下，判断某个记录对事务 t 是否可见
+    /**
+     * 读提交隔离级别下，判断某个记录对事务 t 是否可见
+     * @param tm 事务管理器
+     * @param t 当前事务
+     * @param e 要判断的记录
+     * @return 是否可见
+     */
     private static boolean readCommitted(TransactionManager tm, Transaction t, Entry e) {
         long xid = t.xid;
         long xmin = e.getXmin();
@@ -46,7 +65,13 @@ public class Visibility {
         return false;
     }
 
-    // 可重复读隔离级别下，一个版本是否对事务可见的判断
+    /**
+     * 可重复读隔离级别下，一个版本是否对事务可见的判断
+     * @param tm 事务管理器
+     * @param t 当前事务
+     * @param e 要判断的记录
+     * @return 是否可见
+     */
     private static boolean repeatableRead(TransactionManager tm, Transaction t, Entry e) {
         long xid = t.xid;
         long xmin = e.getXmin();

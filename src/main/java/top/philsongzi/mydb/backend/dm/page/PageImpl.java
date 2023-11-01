@@ -22,10 +22,16 @@ public class PageImpl implements Page{
     // 3. dirty 表示这个页面是否是脏页面，在缓存驱逐的时候，脏页面需要被写回磁盘。
     private boolean dirty;
     private Lock lock;
-    // 4. PageCache 方便在拿到对 Page 的引用时可以快速对页面的缓存进行释放操作。
+    // 4. PageCache 的引用，方便在拿到对 Page 的引用时可以快速对页面的缓存进行释放操作。
     private PageCache pageCache;
 
-    // 构造方法
+    /**
+     * 构造方法
+     *
+     * @param pageNumber 页号
+     * @param data 数据
+     * @param pageCache 页面缓存
+     */
     public PageImpl(int pageNumber, byte[] data, PageCache pageCache) {
         this.pageNumber = pageNumber;
         this.data = data;

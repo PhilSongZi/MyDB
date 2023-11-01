@@ -25,28 +25,28 @@ public interface PageCache {
     void close();
     void release(Page page);
 
-    void truncateByBgno(int maxPgno);
+    void truncateByPgno(int maxPgno);
     int getPageNumber();
     void flushPage(Page page);
 
     // public 修饰对于接口类方法来说是多余的，因为接口类方法默认就是 public 的。
     static PageCacheImpl create(String path, long memory) {
-        File f = new File(path+PageCacheImpl.DB_SUFFIX);
+        File file = new File(path+PageCacheImpl.DB_SUFFIX);
         try {
-            if(!f.createNewFile()) {
+            if(!file.createNewFile()) {
                 Panic.panic(Error.FileExistsException);
             }
         } catch (Exception e) {
             Panic.panic(e);
         }
-        if(!f.canRead() || !f.canWrite()) {
+        if(!file.canRead() || !file.canWrite()) {
             Panic.panic(Error.FileCannotRWException);
         }
 
         FileChannel fc = null;
         RandomAccessFile raf = null;
         try {
-            raf = new RandomAccessFile(f, "rw");
+            raf = new RandomAccessFile(file, "rw");
             fc = raf.getChannel();
         } catch (FileNotFoundException e) {
             Panic.panic(e);
@@ -55,19 +55,19 @@ public interface PageCache {
     }
 
     static PageCacheImpl open(String path, long memory) {
-        File f = new File(path+PageCacheImpl.DB_SUFFIX);
+        File file = new File(path+PageCacheImpl.DB_SUFFIX);
         // Duplicated code fragment (15 lines long).
-        if(!f.exists()) {
+        if(!file.exists()) {
             Panic.panic(Error.FileNotExistsException);
         }
-        if(!f.canRead() || !f.canWrite()) {
+        if(!file.canRead() || !file.canWrite()) {
             Panic.panic(Error.FileCannotRWException);
         }
 
         FileChannel fc = null;
         RandomAccessFile raf = null;
         try {
-            raf = new RandomAccessFile(f, "rw");
+            raf = new RandomAccessFile(file, "rw");
             fc = raf.getChannel();
         } catch (FileNotFoundException e) {
             Panic.panic(e);

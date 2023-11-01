@@ -14,13 +14,25 @@ import top.philsongzi.mydb.backend.utils.Parser;
 import java.util.*;
 
 /**
- * 数据恢复策略
+ * 数据恢复策略——
+ * 日志策略：在进行 I 和 U 操作之前，必须先进行对应的日志操作，在保证日志写入磁盘后，才进行数据操作。
+ * 规定1：正在进行的事务，不会读取其他任何未提交的事务产生的数据。
+ * 规定2：正在进行的事务，不会修改其他任何未提交的事务修改或产生的数据。
+ * 日志恢复：
+ * 1. 重做所有崩溃时已完成（committed 或 aborted）的事务
+ * 2. 撤销所有崩溃时未完成（active）的事务
+ * 在恢复后，数据库就会恢复到所有已完成事务结束，所有未完成事务尚未开始的状态。
  *
  * @author 小子松
  * @since 2023/8/7
  */
 public class Recover {
 
+    // 两种日志的格式——
+    // updateLog:
+    // [LogType] [XID] [UID] [OldRaw] [NewRaw]
+    // insertLog:
+    // [LogType] [XID] [Pgno] [Offset] [Raw]
     private static final byte LOG_TYPE_INSERT = 0;
     private static final byte LOG_TYPE_UPDATE = 1;
 
@@ -42,6 +54,12 @@ public class Recover {
         byte[] newRaw;
     }
 
+    /**
+     * 恢复数据库
+     * @param tm 事务管理器
+     * @param lg 日志 logger
+     * @param pc page cache
+     */
     public static void recover(TransactionManager tm, Logger lg, PageCache pc) {
         System.out.println("Recovering...");
 
@@ -65,7 +83,7 @@ public class Recover {
         if(maxPgno == 0) {
             maxPgno = 1;
         }
-        pc.truncateByBgno(maxPgno);
+        pc.truncateByPgno(maxPgno);
         System.out.println("Truncate to " + maxPgno + " pages.");
 
         redoTranscations(tm, lg, pc);
@@ -77,6 +95,12 @@ public class Recover {
         System.out.println("Recovery Over.");
     }
 
+    /**
+     * 重做所有崩溃时已完成（committed 或 aborted）的事务
+     * @param tm 事务管理器
+     * @param lg 日志 logger
+     * @param pc page cache
+     */
     private static void redoTranscations(TransactionManager tm, Logger lg, PageCache pc) {
         lg.rewind();
         while(true) {
@@ -98,6 +122,12 @@ public class Recover {
         }
     }
 
+    /**
+     * 撤销所有崩溃时未完成（active）的事务
+     * @param tm 事务管理器
+     * @param lg 日志 logger
+     * @param pc page cache
+     */
     private static void undoTranscations(TransactionManager tm, Logger lg, PageCache pc) {
         Map<Long, List<byte[]>> logCache = new HashMap<>();
         lg.rewind();
@@ -144,7 +174,7 @@ public class Recover {
         return log[0] == LOG_TYPE_INSERT;
     }
 
-    // [LogType] [XID] [UID] [OldRaw] [NewRaw]
+    // updateLog： [LogType] [XID] [UID] [OldRaw] [NewRaw]
     private static final int OF_TYPE = 0;
     private static final int OF_XID = OF_TYPE+1;
     private static final int OF_UPDATE_UID = OF_XID+8;
@@ -173,6 +203,12 @@ public class Recover {
         return li;
     }
 
+    /**
+     * 执行日志的重做或者撤销
+     * @param pc page cache
+     * @param log 日志
+     * @param flag 重做或者撤销
+     */
     private static void doUpdateLog(PageCache pc, byte[] log, int flag) {
         int pgno;
         short offset;
@@ -201,7 +237,7 @@ public class Recover {
         }
     }
 
-    // [LogType] [XID] [Pgno] [Offset] [Raw]
+    // insertLog：[LogType] [XID] [Pgno] [Offset] [Raw]
     private static final int OF_INSERT_PGNO = OF_XID+8;
     private static final int OF_INSERT_OFFSET = OF_INSERT_PGNO+4;
     private static final int OF_INSERT_RAW = OF_INSERT_OFFSET+2;
@@ -223,6 +259,12 @@ public class Recover {
         return li;
     }
 
+    /**
+     * 执行日志的重做或者撤销
+     * @param pc page cache
+     * @param log 日志
+     * @param flag 重做或者撤销
+     */
     private static void doInsertLog(PageCache pc, byte[] log, int flag) {
         InsertLogInfo li = parseInsertLog(log);
         Page pg = null;
@@ -233,6 +275,7 @@ public class Recover {
         }
         try {
             if(flag == UNDO) {
+                // 撤销时，将数据项标记为无效，是一种逻辑删除
                 DataItem.setDataItemRawInvalid(li.raw);
             }
             PageX.recoverInsert(pg, li.raw, li.offset);

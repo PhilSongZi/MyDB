@@ -7,7 +7,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import top.philsongzi.mydb.common.Error;
 
 /**
- * 维护一张锁表（依赖等待图）来 死锁检测
+ * 在内存中维护一张锁表（依赖等待图）来 死锁检测
  * @author 小子松
  * @since 2023/8/9
  */
@@ -29,8 +29,13 @@ public class LockTable {
         lock = new ReentrantLock();
     }
 
-    // 不需要等待则返回null，否则返回锁对象
-    // 会造成死锁则抛出异常
+    /**
+     * 在每次出现等待的情况时，就尝试向图中增加一条边，并进行死锁检测。如果检测到死锁，就撤销这条边，不允许添加，并撤销该事务。
+     * @param xid 事务ID
+     * @param uid 资源ID
+     * @return 不需要等待则返回null，否则返回锁对象
+     * @throws Exception 会造成死锁则抛出异常
+     */
     public Lock add(long xid, long uid) throws Exception {
         lock.lock();
         try {
@@ -60,11 +65,16 @@ public class LockTable {
         }
     }
 
+    /**
+     * 释放资源：在一个事务 commit 或者 abort 时，就可以释放所有它持有的锁，并将自身从等待图中删除。
+     * @param xid 事务ID
+     */
     public void remove(long xid) {
         lock.lock();
         try {
             List<Long> l = x2u.get(xid);
             if (l != null) {
+                // while 循环释放掉了这个线程所有持有的资源的锁，这些资源可以被等待的线程所获取
                 while (l.size() > 0) {
                     Long uid = l.remove(0);
                     selectNewXID(uid);
@@ -105,6 +115,13 @@ public class LockTable {
     private Map<Long, Integer> xidStamp;
     private int stamp;
 
+    /**
+     * 检测是否有死锁：
+     *  2PL 会阻塞事务，直至持有锁的线程释放锁。可以将这种等待关系抽象成有向边，形成一个等待图。
+     *  检测死锁也就简单了，只需要查看这个图中是否有环即可。
+     *  算法实现：深度优先搜索.
+     * @return 是否有死锁
+     */
     private boolean hasDeadLock() {
         xidStamp = new HashMap<>();
         stamp = 1;
@@ -121,6 +138,11 @@ public class LockTable {
         return false;
     }
 
+    /**
+     * 深度优先搜索
+     * @param xid 事务ID
+     * @return 是否有环
+     */
     private boolean dfs(long xid) {
         Integer stp = xidStamp.get(xid);
         if (stp != null && stp == stamp) {
